@@ -1,0 +1,47 @@
+---
+version: "3.8"
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.86.0
+    container_name: otel-collector
+    restart: unless-stopped
+    volumes:
+      - ./otel-collector/otelcol-config.yaml:/etc/otelcol-config.yaml
+      - /var/log:/var/log
+    command:
+      - "--config=/etc/otelcol-config.yaml"
+    environment:
+      GRAFANA_API_KEY: "GRAFANA_API_KEY"
+    secrets:
+      - grafana_api_key
+
+  node-exporter:
+    privileged: true
+    image: prom/node-exporter:v1.6.1
+    container_name: node-exporter
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--collector.filesystem.ignored-mount-points"
+      - "^/(rootfs/)?(dev|etc|host|proc|run|sys|volume1)($$|/)"
+
+  snmp-exporter:
+    image: prom/snmp-exporter:v0.24.1
+    container_name: snmp-exporter
+    restart: unless-stopped
+    volumes:
+      - /opt/docker-compose/monitoring/snmp-synology/snmp.yaml:/etc/snmp_exporter/snmp.yaml
+    ports:
+      - "9116:9116"
+    command:
+      - "--config.file=/etc/snmp_exporter/snmp.yaml"
+
+
+secrets:
+  grafana_api_key:
+    file: /opt/docker-compose/monitoring/grafana_api_key.txt---

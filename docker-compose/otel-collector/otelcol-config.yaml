@@ -1,0 +1,48 @@
+---
+receivers:
+  prometheus:
+    config:
+      scrape_configs:
+      - job_name: 'synology-snmp'
+        scrape_interval: 10s
+        static_configs:
+          # The SNMP device address goes here
+          - targets: ['192.168.178.56']
+        metrics_path: /snmp
+        params:
+          module: [synology]
+        relabel_configs:
+          - source_labels: [__address__]
+            target_label: __param_target
+          - source_labels: [__param_target]
+            target_label: instance
+          - target_label: __address__
+            replacement: snmp-exporter:9116
+      - job_name: 'synology-node'
+        scrape_interval: 10s
+        static_configs:
+        - targets: ['node-exporter:9100']
+
+extensions:
+  basicauth/metrics:
+    client_auth:
+      username: GRAFANA_USERNAME
+      password: GRAFANA_API_KEY
+
+exporters:
+  prometheusremotewrite:
+    endpoint: https://prometheus-prod-24-prod-eu-west-2.grafana.net/api/prom/push
+    auth:
+      authenticator: basicauth/metrics
+
+
+processors:
+  spanmetrics:
+    metrics_exporter: prometheusremotewrite
+
+service:
+  extensions: [ basicauth/metrics ]
+  pipelines:
+    metrics:
+      receivers: [prometheus]
+      exporters: [prometheusremotewrite]
